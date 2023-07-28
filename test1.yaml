@@ -1,0 +1,41 @@
+^common: &common
+  - modulepaths:
+    - None
+    modules:
+    - PrgEnv-intel/${PrgEnv_intel_ver}
+    - craype/${craype_ver}
+    - intel/${intel_ver}
+    - prod_util/${prod_util_ver}
+eobs:
+  help: Load environment to run eobs job on WCOSS2
+  whatis: eobs run environment
+  content:
+    - <<: *common
+    - modules:
+      - cray-mpich/${cray_mpich_ver}
+      - cray-pals/${cray_pals_ver}
+      - python/3.8.5
+      - hdf5/${hdf5_ver}
+      - netcdf
+      - crtm/default
+prep:
+  help: Load environment to run prep job on WCOSS2
+  whatis: prep run environment
+  content:
+    - <<: *common
+    - modules:
+      - hdf5/$hdf5_ver
+      - netcdf
+    - modulepaths:
+      - /lfs/h2/emc/global/save/emc.global/git/prepobs/module
+      modules:
+      - prepobs/${prepobs_ver}
+      - prepobs/${prepobs_ver}
+      - prepobs/${prepobs_ver}
+      environment:
+      - a: b
+      - A: A
+      - b: B
+    - environment:
+      - aa: bb
+      - AA: AA
