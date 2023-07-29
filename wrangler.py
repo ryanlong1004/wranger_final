@@ -1,7 +1,6 @@
 """main execution"""
 
 import argparse
-import glob
 import itertools
 import json
 import logging
@@ -26,8 +25,15 @@ class CLI:
             epilog="Example: wrangler --output-path ./temp file.yaml path",
         )
 
-        self.parser.add_argument("paths", nargs="*", type=pathlib.Path)
-        self.parser.add_argument("--output-path", type=pathlib.Path)
+        self.parser.add_argument(
+            "files", nargs="*", type=pathlib.Path, help="File paths to process"
+        )
+        self.parser.add_argument(
+            "--output-path",
+            type=pathlib.Path,
+            help="the path for output to be created",
+            required=True,
+        )
 
     def get_user_input(self) -> dict[str, Any]:
         """queries the user and returs their input"""
@@ -35,7 +41,7 @@ class CLI:
             self.print_help()
         args = self.parser.parse_args()
         self.validate_output_path(args.output_path)
-        return {"output_path": args.output_path, "queue": self.get_queue(args.paths)}
+        return {"output_path": args.output_path, "queue": self.get_queue(args.files)}
 
     def print_help(self):
         """prints user help"""
@@ -56,10 +62,8 @@ class CLI:
         """creates generator of files for parsing"""
         for _path in _paths:
             if _path.is_dir():
-                for _file in glob.glob(f"{_path.absolute()}/*yaml", recursive=True):
-                    yield Path(_file)
-            else:
-                yield _path
+                raise AttributeError(f"{_path} is a directory")
+            yield _path
 
 
 class RequiredInputMissing(Exception):
@@ -206,7 +210,7 @@ def queue(_files):
                     for (script_name, data) in yaml.safe_load(_file).items()
                     if "^" not in script_name
                 ]
-            except AttributeError:
+            except (AttributeError, yaml.parser.ParserError):
                 logging.error("Invalid YAML file.")
 
 

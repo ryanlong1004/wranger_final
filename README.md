@@ -7,7 +7,7 @@ Wrangler requires the PyYaml library.
 
 ## Usage
 ```
-usage: wrangler [-h] [--output-path OUTPUT_PATH] [paths ...]
+usage: wrangler [-h] [--output-path PATH] [paths ...]
 
 Parses and transcribes yaml files to lua scripts
 
@@ -18,13 +18,10 @@ options:
   -h, --help            show this help message and exit
   --output-path OUTPUT_PATH
 
-Example: wrangler --output-path ./temp file.yaml path
+Example: wrangler --output-path file.yaml file2.yaml
 ```
 
 Wrangler requires an output path to be specified with the flag `--output-path`.  This path can be relative or absolute and will be created if it does not already exist.
-
-The positional argument are paths to `.yaml` files.  These paths can be either to
-a file or a directory.  In the case of a directory, wrangler will search recursively in the directory for all `.yaml` files.
 
 ## Developer Notes
 
