@@ -111,9 +111,15 @@ class LuaTranslator:
         if not values:
             return results
         for value in self.ensure_list(values):
-            key, _value = value.split("/")
-            env_value = self.get_environment_value(_value[2:-1])
-            results.append(f'load(pathJoin("{key}", "{env_value}"))\n')
+            try:
+                key, _value = value.split("/")
+                if len(_value) and _value[:2] != "${":
+                    results.append(f'load(pathJoin("{key}", "{_value}"))\n')
+                else:
+                    env_value = self.get_environment_value(_value[2:-1])
+                    results.append(f'load(pathJoin("{key}", "{env_value}"))\n')
+            except ValueError:
+                results.append(f'load(pathJoin("{value}"))\n')
         return results
 
     def environment(self, values: list[dict[str, Any]]) -> list[str]:
@@ -194,11 +200,14 @@ def queue(_files):
         logging.debug("queueing %s", _file)
         with open(_file, "r", encoding="utf-8") as _file:
             translator = LuaTranslator()
-            yield [
-                Script(script_name, data, translator)
-                for (script_name, data) in yaml.safe_load(_file).items()
-                if "^" not in script_name
-            ]
+            try:
+                yield [
+                    Script(script_name, data, translator)
+                    for (script_name, data) in yaml.safe_load(_file).items()
+                    if "^" not in script_name
+                ]
+            except AttributeError:
+                logging.error("Invalid YAML file.")
 
 
 def write_scripts_to_files(scripts: list[Script], output_path: Path):
