@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """main execution"""
 
 import argparse
@@ -7,7 +8,7 @@ import json
 import logging
 import os
 import pathlib
-import sys
+import re
 from pathlib import Path
 from typing import Any, Generator
 
@@ -27,27 +28,17 @@ class CLI:
         )
 
         self.parser.add_argument("paths", nargs="*", type=pathlib.Path)
-        self.parser.add_argument("--output-path", type=pathlib.Path)
+        self.parser.add_argument("--output-path", type=pathlib.Path, required=True)
 
     def get_user_input(self) -> dict[str, Any]:
         """queries the user and returs their input"""
-        if len(sys.argv) == 1:
-            self.print_help()
         args = self.parser.parse_args()
         self.validate_output_path(args.output_path)
         return {"output_path": args.output_path, "queue": self.get_queue(args.paths)}
 
-    def print_help(self):
-        """prints user help"""
-        self.parser.print_help(sys.stderr)
-        sys.exit(1)
-
-    def validate_output_path(self, output_path):
+    @staticmethod
+    def validate_output_path(output_path):
         """validates the output_path is not None and exists"""
-        if output_path is None:
-            logger.error("An output path is required using the '--output_path' flag")
-            sys.exit(2)
-
         if not Path(output_path).exists():
             logger.warning("'%s' directory does not exist... creating", output_path)
             output_path.mkdir(parents=True, exist_ok=True)
@@ -55,6 +46,10 @@ class CLI:
     def get_queue(self, _paths: list[pathlib.Path]) -> Generator[Path, None, None]:
         """creates generator of files for parsing"""
         for _path in _paths:
+            # NOTE: This is a little dangerous
+            # NOTE: What if the directory contains yamls not of the type this program can transcribe?
+            # NOTE: instead, ask the user a specific yaml or validate the yaml matches
+            # NOTE: help, whatis, content keys?
             if _path.is_dir():
                 for _file in glob.glob(f"{_path.absolute()}/*yaml", recursive=True):
                     yield Path(_file)
@@ -62,12 +57,10 @@ class CLI:
                 yield _path
 
 
-class RequiredInputMissing(Exception):
-    """Raised when a required input is missing"""
-
-
 class LuaTranslator:
     """Translates key, value pairs to Lua commands"""
+
+    _ENV_RE = re.compile(r"\$[{]?(?P<envkey>[a-zA-Z0-9_]*)[}]?")
 
     def __init__(self):
         pass
@@ -79,24 +72,25 @@ class LuaTranslator:
         """
         _map = {
             "modules": self.modules,
-            "modulepaths": self.module_paths,
+            "modulepaths": self.modulepaths,
             "environment": self.environment,
-            "help": self._help,
-            "whatis": self.what_is,
+            "help": self.help,
+            "whatis": self.whatis,
         }
         return _map.get(key, lambda x: x)(value)
 
-    def ensure_list(self, value):
+    @staticmethod
+    def ensure_list(value):
         """ensures a value is a list or coerces to list of len 1"""
         return value if isinstance(value, list) else [value]
 
-    def module_paths(self, values: list[str]) -> list[str]:
+    def modulepaths(self, values: list[str]) -> list[str]:
         """returns lua module path commands"""
         if not values:
             return []
         return [
             f'prepend_path("MODULEPATH", pathJoin("{_path}"))\n'
-            for _path in values
+            for _path in self.ensure_list(values)
             if _path != "None"
         ]
 
@@ -111,9 +105,12 @@ class LuaTranslator:
         if not values:
             return results
         for value in self.ensure_list(values):
-            key, _value = value.split("/")
-            env_value = self.get_environment_value(_value[2:-1])
-            results.append(f'load(pathJoin("{key}", "{env_value}"))\n')
+            try:
+                key, _value = value.split("/")
+                env_value = self.get_environment_value(_value)
+                results.append(f'load(pathJoin("{key}", {env_value}))\n')
+            except ValueError:
+                results.append(f'load("{value}")\n')
         return results
 
     def environment(self, values: list[dict[str, Any]]) -> list[str]:
@@ -127,20 +124,27 @@ class LuaTranslator:
                 results.append(f'setenv("{key}", "{value}")\n')
         return results
 
-    def get_environment_value(self, key) -> str:
+    @classmethod
+    def get_environment_value(cls, key) -> str:
         """returns the os environment value if it exists or a lua environment lookup otherwise"""
-        value = os.getenv(key)
-        if value is None:
-            value = f"os.getenv({key})"
-        return value
+        mm = cls._ENV_RE.match(key)
+        if mm:
+            envkey = mm.group("envkey")
+            if envkey is not None:
+                value = os.getenv(envkey)
+                if value is None:
+                    value = f'os.getenv("{envkey}")'
+            return value
+        else:
+            return f'"{key}"'
 
-    def what_is(self, values: list[str]) -> list[str]:
+    def whatis(self, values: list[str]) -> list[str]:
         """returns list Lua whatis commands"""
         if not values:
             return []
         return [f'whatis("{value}")\n' for value in self.ensure_list(values)]
 
-    def _help(self, values: list[str]) -> list[str]:
+    def help(self, values: list[str]) -> list[str]:
         """returns list of Lua help commands"""
         if not values:
             return []
@@ -230,7 +234,6 @@ def main():
 
     for scripts in queue(inputs):
         write_scripts_to_files(scripts, output_path)
-    sys.exit(0)
 
 
 if __name__ == "__main__":
