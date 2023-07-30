@@ -1,4 +1,5 @@
 # Wrangler
+[![Python package](https://github.com/ryanlong1004/wranger_final/actions/workflows/python-package.yml/badge.svg)](https://github.com/ryanlong1004/wranger_final/actions/workflows/python-package.yml)
 
 ## Installation
 Wrangler requires the PyYaml library.
