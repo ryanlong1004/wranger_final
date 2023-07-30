@@ -210,8 +210,10 @@ def queue(_files):
                     for (script_name, data) in yaml.safe_load(_file).items()
                     if "^" not in script_name
                 ]
-            except (AttributeError, yaml.parser.ParserError):
-                logging.error("Invalid YAML file.")
+            except (AttributeError, yaml.parser.ParserError) as error:
+                logging.error(
+                    "Invalid YAML file detected. [CTRL-C] to quit. (%s)", str(error)
+                )
 
 
 def write_scripts_to_files(scripts: list[Script], output_path: Path):

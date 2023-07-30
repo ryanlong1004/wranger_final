@@ -380,3 +380,9 @@ def test_run_sample_3():
             'load(pathJoin("prod_util", "os.getenv(prod_util_ver)"))\n',
         ]
         assert script.content == expected
+
+
+if __name__ == "__main__":
+    for idx, script in enumerate([SAMPLE_1, SAMPLE_2, SAMPLE_3]):
+        with open(f"./{idx}.yaml", "w", encoding="utf-8") as _file:
+            _file.write(script)
