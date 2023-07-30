@@ -35,7 +35,7 @@ class CLI:
             required=True,
         )
 
-    def get_user_input(self):
+    def get_user_input(self) -> dict[str, Any]:
         """queries the user and returs their input"""
         if len(sys.argv) == 1:
             self.print_help()
@@ -58,7 +58,7 @@ class CLI:
             logger.warning("'%s' directory does not exist... creating", output_path)
             output_path.mkdir(parents=True, exist_ok=True)
 
-    def get_queue(self, _paths) -> Generator[Path, None, None]:
+    def get_queue(self, _paths: list[pathlib.Path]) -> Generator[Path, None, None]:
         """creates generator of files for parsing"""
         for _path in _paths:
             if _path.is_dir():
