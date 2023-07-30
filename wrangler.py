@@ -35,7 +35,7 @@ class CLI:
             required=True,
         )
 
-    def get_user_input(self) -> dict[str, Any]:
+    def get_user_input(self):
         """queries the user and returs their input"""
         if len(sys.argv) == 1:
             self.print_help()
